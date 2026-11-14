@@ -129,6 +129,32 @@ export async function updateApplePushToken(
     .eq('apple_pass_serial', serial)
 }
 
+export async function getAllCustomers() {
+  const { data, error } = await db
+    .from('customers')
+    .select(`
+      id, name, phone, created_at,
+      loyalty_cards (id, type, stamps, updated_at)
+    `)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data ?? []
+}
+
+export async function getCustomerHistory(customerId: string) {
+  const { data } = await db
+    .from('transactions')
+    .select(`
+      id, action, notes, created_at,
+      loyalty_cards (type)
+    `)
+    .eq('loyalty_cards.customer_id', customerId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  return data ?? []
+}
+
 export async function getDashboardStats() {
   const { data: cards } = await db.from('loyalty_cards').select('type, stamps, updated_at')
   const { data: transactions } = await db
