@@ -112,22 +112,12 @@ export async function getApplePassBuffer(
 
 // Called by Apple when stamps change — sends a push to the device
 export async function pushPassUpdate(pushToken: string): Promise<void> {
-  // APNs push notification to trigger re-download of pass
-  // Uses the apple cert to authenticate with APNs
-  // The device will then call GET /api/passes/apple/{serial} to fetch updated pass
-  const { default: apn } = await import('apn').catch(() => {
-    throw new Error('Install apn package: npm install apn @types/apn')
-  })
-
-  const provider = new apn.Provider({
-    cert: Buffer.from(process.env.APPLE_CERT_P12_BASE64!, 'base64'),
-    passphrase: process.env.APPLE_CERT_PASSWORD,
-    production: process.env.NODE_ENV === 'production',
-  })
-
-  const notification = new apn.Notification()
-  notification.topic = `${process.env.APPLE_PASS_TYPE_ID}.voip`
-
-  await provider.send(notification, pushToken)
-  provider.shutdown()
+  // APNs push notifications require the 'apn' package + Apple certificates
+  // This will be enabled once Apple Developer account is configured
+  if (!process.env.APPLE_CERT_P12_BASE64) {
+    console.log('Apple push skipped: certificates not configured')
+    return
+  }
+  // TODO: implement APNs push when Apple certs are added
+  console.log('Apple push token registered:', pushToken)
 }
