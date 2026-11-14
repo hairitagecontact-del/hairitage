@@ -1,5 +1,6 @@
 import { PKPass } from 'passkit-generator'
 import { randomUUID } from 'crypto'
+import * as forge from 'node-forge'
 import type { CardType } from '@/types'
 import { PASS_CONFIGS, getStampLabel } from './pass-config'
 
@@ -9,14 +10,32 @@ function getCertificates() {
   const password = process.env.APPLE_CERT_PASSWORD
 
   if (!p12Base64 || !wwdrBase64 || !password) {
-    throw new Error('Apple Wallet certificates not configured. Add APPLE_CERT_P12_BASE64, APPLE_WWDR_CERT_BASE64 and APPLE_CERT_PASSWORD to .env')
+    throw new Error('Apple Wallet certificates not configured')
+  }
+
+  // Extract PEM cert + key from P12 using node-forge
+  const p12Der = forge.util.decode64(p12Base64)
+  const p12Asn1 = forge.asn1.fromDer(p12Der)
+  const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, password)
+
+  let certPem = ''
+  let keyPem = ''
+
+  for (const safeContent of p12.safeContents) {
+    for (const safeBag of safeContent.safeBags) {
+      if (safeBag.type === forge.pki.oids.certBag && safeBag.cert) {
+        certPem = forge.pki.certificateToPem(safeBag.cert)
+      }
+      if (safeBag.type === forge.pki.oids.pkcs8ShroudedKeyBag && safeBag.key) {
+        keyPem = forge.pki.privateKeyToPem(safeBag.key)
+      }
+    }
   }
 
   return {
-    signerCert: Buffer.from(p12Base64, 'base64'),
+    signerCert: certPem,
+    signerKey: keyPem,
     wwdr: Buffer.from(wwdrBase64, 'base64'),
-    signerKey: Buffer.from(p12Base64, 'base64'),
-    signerKeyPassphrase: password,
   }
 }
 
@@ -32,12 +51,7 @@ export async function createApplePass(
   const passTypeId = process.env.APPLE_PASS_TYPE_ID!
   const certs = getCertificates()
 
-  const pass = new PKPass({}, {
-    wwdr: certs.wwdr,
-    signerCert: certs.signerCert,
-    signerKey: certs.signerKey,
-    signerKeyPassphrase: certs.signerKeyPassphrase,
-  }, {
+  const pass = new PKPass({}, certs, {
     serialNumber: serial,
     passTypeIdentifier: passTypeId,
     teamIdentifier: teamId,
@@ -47,54 +61,35 @@ export async function createApplePass(
     foregroundColor: config.foregroundColor,
     labelColor: config.labelColor,
     webServiceURL: `${appUrl}/api/passes/apple`,
-    authenticationToken: serial, // used as auth token for pass updates
-    storeCard: {
-      primaryFields: [
-        {
-          key: 'stamps',
-          label: 'TAMPONS',
-          value: getStampLabel(stamps, config.totalStamps),
-          changeMessage: 'Tampon ajouté !'
-        }
-      ],
-      secondaryFields: [
-        {
-          key: 'gift',
-          label: 'CADEAU',
-          value: config.gift,
-        },
-        {
-          key: 'client',
-          label: 'CLIENT',
-          value: customerName,
-        }
-      ],
-      auxiliaryFields: [
-        {
-          key: 'type',
-          label: 'TYPE',
-          value: config.label,
-        }
-      ],
-      backFields: [
-        {
-          key: 'info',
-          label: "HAIR'ITAGE",
-          value: `Présentez cette carte à chaque visite. ${config.totalStamps} tampons = ${config.gift}.`,
-        },
-        {
-          key: 'contact',
-          label: 'CONTACT',
-          value: 'hairitage.ma',
-        }
-      ]
-    },
-    barcodes: [{
-      message: serial,
-      format: 'PKBarcodeFormatQR',
-      messageEncoding: 'iso-8859-1',
-    }]
+    authenticationToken: serial,
   })
+
+  pass.type = 'storeCard'
+
+  pass.primaryFields.push({
+    key: 'stamps',
+    label: 'TAMPONS',
+    value: getStampLabel(stamps, config.totalStamps),
+    changeMessage: 'Tampon ajouté !',
+  })
+
+  pass.secondaryFields.push(
+    { key: 'gift', label: 'CADEAU', value: config.gift },
+    { key: 'client', label: 'CLIENT', value: customerName }
+  )
+
+  pass.auxiliaryFields.push({ key: 'type', label: 'TYPE', value: config.label })
+
+  pass.backFields.push(
+    {
+      key: 'info',
+      label: "HAIR'ITAGE",
+      value: `Présentez cette carte à chaque visite. ${config.totalStamps} tampons = ${config.gift}.`,
+    },
+    { key: 'contact', label: 'CONTACT', value: 'hairitage.ma' }
+  )
+
+  pass.setBarcodes({ message: serial, format: 'PKBarcodeFormatQR', messageEncoding: 'iso-8859-1' })
 
   const buffer = await pass.getAsBuffer()
   return { buffer, serial }
@@ -110,14 +105,10 @@ export async function getApplePassBuffer(
   return buffer
 }
 
-// Called by Apple when stamps change — sends a push to the device
 export async function pushPassUpdate(pushToken: string): Promise<void> {
-  // APNs push notifications require the 'apn' package + Apple certificates
-  // This will be enabled once Apple Developer account is configured
   if (!process.env.APPLE_CERT_P12_BASE64) {
     console.log('Apple push skipped: certificates not configured')
     return
   }
-  // TODO: implement APNs push when Apple certs are added
   console.log('Apple push token registered:', pushToken)
 }
