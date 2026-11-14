@@ -93,6 +93,20 @@ export async function createGooglePassObject(
         id: 'progress',
       }
     ],
+    linksModuleData: {
+      uris: [
+        {
+          uri: process.env.GOOGLE_MAPS_URL ?? 'https://maps.google.com',
+          description: 'Laisser un avis Google',
+          id: 'google_maps',
+        }
+      ]
+    },
+    barcode: {
+      type: 'QR_CODE',
+      value: cardId,
+      alternateText: cardId,
+    },
   }
 
   await (client as any).request({

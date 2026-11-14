@@ -86,7 +86,13 @@ export async function createApplePass(
       label: "HAIR'ITAGE",
       value: `Présentez cette carte à chaque visite. ${config.totalStamps} tampons = ${config.gift}.`,
     },
-    { key: 'contact', label: 'CONTACT', value: 'hairitage.ma' }
+    { key: 'contact', label: 'CONTACT', value: 'hairitage.ma' },
+    {
+      key: 'review',
+      label: 'LAISSER UN AVIS',
+      value: process.env.GOOGLE_MAPS_URL ?? 'https://maps.google.com',
+      attributedValue: `<a href='${process.env.GOOGLE_MAPS_URL ?? 'https://maps.google.com'}'>Laisser un avis Google ⭐</a>`,
+    }
   )
 
   pass.setBarcodes({ message: serial, format: 'PKBarcodeFormatQR', messageEncoding: 'iso-8859-1' })

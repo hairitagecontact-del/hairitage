@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { PASS_CONFIGS } from '@/lib/pass-config'
 import type { CardType } from '@/types'
 
@@ -58,6 +58,11 @@ export default function DashboardPage() {
   const [filterType, setFilterType] = useState<CardType | 'all'>('all')
   const [filterActivity, setFilterActivity] = useState<'all' | 'active' | 'inactive'>('all')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [showSms, setShowSms] = useState(false)
+  const [smsMsg, setSmsMsg] = useState('')
+  const [smsFilter, setSmsFilter] = useState<'all' | CardType>('all')
+  const [smsSending, setSmsSending] = useState(false)
+  const [smsResult, setSmsResult] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/dashboard/customers')
@@ -137,12 +142,73 @@ export default function DashboardPage() {
         </div>
         <div className="flex justify-between items-center">
           <span className="text-xs text-[rgba(240,235,224,0.4)]">{filtered.length} client{filtered.length !== 1 ? 's' : ''}</span>
-          <button onClick={() => exportCSV(customers)}
-            className="text-xs text-[#C9A84C] border border-[rgba(201,168,76,0.3)] px-3 py-1.5 rounded-full hover:bg-[rgba(201,168,76,0.08)] transition-colors">
-            ↓ Exporter CSV
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => { setShowSms(s => !s); setSmsResult(null) }}
+              className="text-xs text-[#C9A84C] border border-[rgba(201,168,76,0.3)] px-3 py-1.5 rounded-full hover:bg-[rgba(201,168,76,0.08)] transition-colors">
+              📱 Envoyer SMS
+            </button>
+            <button onClick={() => exportCSV(customers)}
+              className="text-xs text-[#C9A84C] border border-[rgba(201,168,76,0.3)] px-3 py-1.5 rounded-full hover:bg-[rgba(201,168,76,0.08)] transition-colors">
+              ↓ CSV
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* SMS Panel */}
+      {showSms && (
+        <div className="bg-[#1C1C18] border border-[rgba(201,168,76,0.2)] rounded-2xl p-4 mb-6">
+          <div className="text-sm font-medium mb-3">Envoyer un SMS promo</div>
+          <div className="flex gap-2 mb-3 flex-wrap">
+            {(['all', 'homme', 'coiffure', 'esthetique'] as const).map(t => (
+              <button key={t} onClick={() => setSmsFilter(t)}
+                className={`px-3 py-1 rounded-full text-xs transition-all ${
+                  smsFilter === t ? 'bg-[#C9A84C] text-[#0F0F0D]' : 'bg-[#0F0F0D] border border-[rgba(201,168,76,0.2)] text-[rgba(240,235,224,0.6)]'
+                }`}>
+                {t === 'all' ? 'Tous' : t === 'homme' ? 'Barbershop' : t === 'coiffure' ? 'Coiffure' : 'Esthétique'}
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={smsMsg}
+            onChange={e => setSmsMsg(e.target.value)}
+            placeholder="Votre message SMS..."
+            rows={3}
+            className="w-full bg-[#0F0F0D] border border-[rgba(201,168,76,0.2)] rounded-xl px-3 py-2 text-[#F0EBE0] placeholder-[rgba(240,235,224,0.3)] focus:outline-none focus:border-[#C9A84C] text-sm resize-none mb-3"
+          />
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-[rgba(240,235,224,0.4)]">{smsMsg.length}/160</span>
+            <button
+              onClick={async () => {
+                if (!smsMsg.trim()) return
+                setSmsSending(true)
+                setSmsResult(null)
+                const pin = sessionStorage.getItem('caisse_pin') ?? ''
+                const res = await fetch('/api/sms', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-caisse-pin': pin },
+                  body: JSON.stringify({ message: smsMsg, filter: smsFilter }),
+                })
+                const data = await res.json()
+                if (data.error === 'Twilio non configuré') {
+                  setSmsResult('⚠️ Twilio pas encore configuré — ajoute les clés dans Vercel')
+                } else {
+                  setSmsResult(`✅ ${data.sent} SMS envoyé${data.sent !== 1 ? 's' : ''} sur ${data.total}`)
+                  setSmsMsg('')
+                }
+                setSmsSending(false)
+              }}
+              disabled={smsSending || !smsMsg.trim()}
+              className="bg-[#C9A84C] text-[#0F0F0D] font-semibold text-sm px-4 py-2 rounded-full disabled:opacity-50"
+            >
+              {smsSending ? '...' : 'Envoyer'}
+            </button>
+          </div>
+          {smsResult && (
+            <div className="mt-3 text-xs text-center text-[rgba(240,235,224,0.6)]">{smsResult}</div>
+          )}
+        </div>
+      )}
 
       {/* Client list */}
       {loading ? (

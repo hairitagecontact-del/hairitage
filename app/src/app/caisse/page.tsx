@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { CardType } from '@/types'
 import { PASS_CONFIGS } from '@/lib/pass-config'
 
@@ -16,15 +16,12 @@ export default function CaissePage() {
   const [authed, setAuthed] = useState(false)
   const [pinError, setPinError] = useState(false)
 
-  // Check if already authed in session
   useEffect(() => {
     if (sessionStorage.getItem('caisse_auth') === 'ok') setAuthed(true)
   }, [])
 
   function submitPin(e: React.FormEvent) {
     e.preventDefault()
-    // PIN is verified server-side — here we just store locally for UX
-    // Real check happens on each API call via x-caisse-pin header
     if (pin.length === 4) {
       sessionStorage.setItem('caisse_pin', pin)
       sessionStorage.setItem('caisse_auth', 'ok')
@@ -74,6 +71,9 @@ function CaisseApp() {
   const [selectedType, setSelectedType] = useState<CardType | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ message: string; complete: boolean } | null>(null)
+  const [scanning, setScanning] = useState(false)
+  const scannerRef = useRef<any>(null)
+  const scanDivId = 'qr-scanner-region'
 
   const pin = typeof window !== 'undefined' ? sessionStorage.getItem('caisse_pin') ?? '' : ''
 
@@ -86,6 +86,54 @@ function CaisseApp() {
     const data = await res.json()
     setCustomers(data)
   }
+
+  function selectCustomer(c: Customer, type?: CardType) {
+    setSelected(c)
+    setCustomers([])
+    setSelectedType(type ?? (c.loyalty_cards[0]?.type ?? null))
+    setResult(null)
+  }
+
+  async function startScanner() {
+    setScanning(true)
+    const { Html5Qrcode } = await import('html5-qrcode')
+    scannerRef.current = new Html5Qrcode(scanDivId)
+    try {
+      await scannerRef.current.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        async (decodedText: string) => {
+          await stopScanner()
+          // Lookup by serial (Apple) or card ID (Google)
+          const res = await fetch(`/api/caisse/scan?serial=${encodeURIComponent(decodedText)}`, {
+            headers: { 'x-caisse-pin': pin }
+          })
+          if (res.ok) {
+            const { customer, scannedType } = await res.json()
+            selectCustomer(customer, scannedType)
+          } else {
+            setResult({ message: 'QR code non reconnu', complete: false })
+          }
+        },
+        () => {}
+      )
+    } catch {
+      setScanning(false)
+      setResult({ message: 'Caméra inaccessible', complete: false })
+    }
+  }
+
+  async function stopScanner() {
+    if (scannerRef.current) {
+      await scannerRef.current.stop().catch(() => {})
+      scannerRef.current = null
+    }
+    setScanning(false)
+  }
+
+  useEffect(() => {
+    return () => { stopScanner() }
+  }, [])
 
   async function addStamp() {
     if (!selected || !selectedType) return
@@ -102,7 +150,6 @@ function CaisseApp() {
       })
       const data = await res.json()
       setResult(data)
-      // Refresh customer
       await search(query)
     } finally {
       setLoading(false)
@@ -139,22 +186,58 @@ function CaisseApp() {
         HAIR&apos;ITAGE — Caisse
       </div>
 
+      {/* Scanner QR */}
+      {!selected && (
+        <div className="mb-6">
+          {!scanning ? (
+            <button
+              onClick={startScanner}
+              className="w-full bg-[#1C1C18] border border-[rgba(201,168,76,0.3)] text-[#C9A84C] font-medium rounded-xl py-4 flex items-center justify-center gap-2 hover:border-[#C9A84C] transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h2v2h-2zM18 14h3M14 18h2M18 18h3M18 21v-3"/>
+              </svg>
+              Scanner la carte du client
+            </button>
+          ) : (
+            <div>
+              <div id={scanDivId} className="rounded-xl overflow-hidden" />
+              <button onClick={stopScanner} className="mt-3 w-full text-sm text-[rgba(240,235,224,0.5)] py-2">
+                Annuler
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Divider */}
+      {!selected && !scanning && (
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex-1 h-px bg-[rgba(240,235,224,0.1)]" />
+          <span className="text-xs text-[rgba(240,235,224,0.3)] uppercase tracking-widest">ou</span>
+          <div className="flex-1 h-px bg-[rgba(240,235,224,0.1)]" />
+        </div>
+      )}
+
       {/* Search */}
-      <div className="mb-6">
-        <input
-          type="text"
-          value={query}
-          onChange={e => { search(e.target.value); setSelected(null); setResult(null) }}
-          placeholder="Nom ou numéro de téléphone..."
-          className="w-full bg-[#1C1C18] border border-[rgba(201,168,76,0.2)] rounded-xl px-4 py-3 text-[#F0EBE0] placeholder-[rgba(240,235,224,0.3)] focus:outline-none focus:border-[#C9A84C]"
-        />
-      </div>
+      {!scanning && (
+        <div className="mb-6">
+          <input
+            type="text"
+            value={query}
+            onChange={e => { search(e.target.value); setSelected(null); setResult(null) }}
+            placeholder="Nom ou numéro de téléphone..."
+            className="w-full bg-[#1C1C18] border border-[rgba(201,168,76,0.2)] rounded-xl px-4 py-3 text-[#F0EBE0] placeholder-[rgba(240,235,224,0.3)] focus:outline-none focus:border-[#C9A84C]"
+          />
+        </div>
+      )}
 
       {/* Results */}
       {customers.length > 0 && !selected && (
         <div className="flex flex-col gap-2 mb-6">
           {customers.map(c => (
-            <button key={c.id} onClick={() => { setSelected(c); setCustomers([]) }}
+            <button key={c.id} onClick={() => selectCustomer(c)}
               className="bg-[#1C1C18] border border-[rgba(201,168,76,0.15)] rounded-xl px-4 py-3 text-left hover:border-[#C9A84C] transition-colors">
               <div className="font-medium">{c.name}</div>
               <div className="text-sm text-[rgba(240,235,224,0.5)]">{c.phone}</div>
