@@ -72,8 +72,10 @@ function CaisseApp() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ message: string; complete: boolean } | null>(null)
   const [scanning, setScanning] = useState(false)
-  const scannerRef = useRef<any>(null)
-  const scanDivId = 'qr-scanner-region'
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const rafRef = useRef<number>(0)
+  const streamRef = useRef<MediaStream | null>(null)
 
   const pin = typeof window !== 'undefined' ? sessionStorage.getItem('caisse_pin') ?? '' : ''
 
@@ -96,38 +98,59 @@ function CaisseApp() {
 
   async function startScanner() {
     setScanning(true)
-    const { Html5Qrcode } = await import('html5-qrcode')
-    scannerRef.current = new Html5Qrcode(scanDivId)
     try {
-      await scannerRef.current.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 220, height: 220 } },
-        async (decodedText: string) => {
-          await stopScanner()
-          // Lookup by serial (Apple) or card ID (Google)
-          const res = await fetch(`/api/caisse/scan?serial=${encodeURIComponent(decodedText)}`, {
-            headers: { 'x-caisse-pin': pin }
-          })
-          if (res.ok) {
-            const { customer, scannedType } = await res.json()
-            selectCustomer(customer, scannedType)
-          } else {
-            setResult({ message: 'QR code non reconnu', complete: false })
-          }
-        },
-        () => {}
-      )
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+        scanFrame()
+      }
     } catch {
       setScanning(false)
       setResult({ message: 'Caméra inaccessible', complete: false })
     }
   }
 
-  async function stopScanner() {
-    if (scannerRef.current) {
-      await scannerRef.current.stop().catch(() => {})
-      scannerRef.current = null
+  function scanFrame() {
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
+      rafRef.current = requestAnimationFrame(scanFrame)
+      return
     }
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(video, 0, 0)
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    import('jsqr').then(({ default: jsQR }) => {
+      const code = jsQR(imageData.data, imageData.width, imageData.height)
+      if (code) {
+        stopScanner()
+        handleScan(code.data)
+      } else {
+        rafRef.current = requestAnimationFrame(scanFrame)
+      }
+    })
+  }
+
+  async function handleScan(decodedText: string) {
+    const res = await fetch(`/api/caisse/scan?serial=${encodeURIComponent(decodedText)}`, {
+      headers: { 'x-caisse-pin': pin }
+    })
+    if (res.ok) {
+      const { customer, scannedType } = await res.json()
+      selectCustomer(customer, scannedType)
+    } else {
+      setResult({ message: 'QR code non reconnu', complete: false })
+    }
+  }
+
+  function stopScanner() {
+    cancelAnimationFrame(rafRef.current)
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    streamRef.current = null
     setScanning(false)
   }
 
@@ -201,8 +224,12 @@ function CaisseApp() {
               Scanner la carte du client
             </button>
           ) : (
-            <div>
-              <div id={scanDivId} className="rounded-xl overflow-hidden" />
+            <div className="relative">
+              <video ref={videoRef} className="w-full rounded-xl" playsInline muted />
+              <canvas ref={canvasRef} className="hidden" />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-48 h-48 border-2 border-[#C9A84C] rounded-xl opacity-70" />
+              </div>
               <button onClick={stopScanner} className="mt-3 w-full text-sm text-[rgba(240,235,224,0.5)] py-2">
                 Annuler
               </button>
