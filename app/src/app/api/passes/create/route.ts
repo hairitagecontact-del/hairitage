@@ -25,15 +25,29 @@ export async function POST(req: NextRequest) {
     // Don't create duplicate cards for same type
     const existing = await getCardByCustomerAndType(customer.id, type)
     if (existing) {
-      const googleUrl = existing.google_pass_id
-        ? generateGoogleWalletUrl(type, existing.id)
-        : undefined
+      let googleUrl: string | undefined
+      if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+        try {
+          await ensureLoyaltyClass(type)
+          if (!existing.google_pass_id) {
+            await createGooglePassObject(type, existing.id, name, existing.stamps ?? 0)
+          }
+          googleUrl = generateGoogleWalletUrl(type, existing.id)
+        } catch (e) {
+          console.error('Google pass error on existing card:', e)
+        }
+      }
+
+      let appleUrl: string | undefined
+      if (process.env.APPLE_CERT_P12_BASE64) {
+        appleUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/passes/apple/${existing.apple_pass_serial}/download`
+      }
 
       return NextResponse.json({
         exists: true,
         card_id: existing.id,
         serial: existing.apple_pass_serial,
-        apple_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/passes/apple/${existing.apple_pass_serial}/download`,
+        apple_url: appleUrl,
         google_url: googleUrl,
       })
     }
