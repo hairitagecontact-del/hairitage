@@ -41,28 +41,46 @@ export async function POST(req: NextRequest) {
     const serial = randomUUID()
     const card = await createCard(customer.id, type, serial)
 
-    // Generate Apple pass
-    const { buffer } = await createApplePass(type, name, 0, serial)
+    let appleUrl: string | undefined
+    let googleUrl: string | undefined
 
-    // Store the .pkpass file in Supabase Storage
-    const { createClient } = await import('@supabase/supabase-js')
-    const storage = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-    await storage.storage
-      .from('passes')
-      .upload(`${serial}.pkpass`, buffer, { contentType: 'application/vnd.apple.pkpass', upsert: true })
+    // Generate Apple pass — skip if certs not configured
+    if (process.env.APPLE_CERT_P12_BASE64) {
+      try {
+        const { buffer } = await createApplePass(type, name, 0, serial)
+        const { createClient } = await import('@supabase/supabase-js')
+        const storage = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+        await storage.storage
+          .from('passes')
+          .upload(`${serial}.pkpass`, buffer, { contentType: 'application/vnd.apple.pkpass', upsert: true })
+        appleUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/passes/apple/${serial}/download`
+      } catch (e) {
+        console.error('Apple pass error (skipped):', e)
+      }
+    }
 
-    // Generate Google pass
-    await ensureLoyaltyClass(type)
-    await createGooglePassObject(type, card.id, name, 0)
-    const googleUrl = generateGoogleWalletUrl(type, card.id)
+    // Generate Google pass — skip if not configured
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      try {
+        await ensureLoyaltyClass(type)
+        await createGooglePassObject(type, card.id, name, 0)
+        googleUrl = generateGoogleWalletUrl(type, card.id)
+      } catch (e) {
+        console.error('Google pass error (skipped):', e)
+      }
+    }
+
+    if (!appleUrl && !googleUrl) {
+      return NextResponse.json({ error: 'Aucun Wallet configuré' }, { status: 503 })
+    }
 
     return NextResponse.json({
       card_id: card.id,
       serial,
-      apple_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/passes/apple/${serial}/download`,
+      apple_url: appleUrl,
       google_url: googleUrl,
     })
   } catch (err: any) {
