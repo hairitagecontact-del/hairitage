@@ -143,18 +143,41 @@ export async function updateGooglePassStamps(
   })
 }
 
-// Generates a "Save to Google Wallet" JWT link
-export function generateGoogleWalletUrl(type: CardType, cardId: string): string {
+// Generates a "Save to Google Wallet" JWT link with full object embedded
+export function generateGoogleWalletUrl(type: CardType, cardId: string, customerName?: string, stamps = 0): string {
   const credentials = getCredentials()
+  const config = PASS_CONFIGS[type]
+
+  const loyaltyObject = {
+    id: objectId(type, cardId),
+    classId: classId(type),
+    state: 'ACTIVE',
+    accountId: cardId,
+    accountName: customerName ?? '',
+    loyaltyPoints: {
+      label: 'Tampons',
+      balance: { int: stamps },
+    },
+    textModulesData: [
+      { header: 'CADEAU', body: `${config.totalStamps} tampons = ${config.gift}`, id: 'gift_info' },
+      { header: 'PROGRESSION', body: getStampLabel(stamps, config.totalStamps), id: 'progress' },
+    ],
+    linksModuleData: {
+      uris: [{
+        uri: process.env.GOOGLE_MAPS_URL ?? 'https://maps.google.com',
+        description: 'Laisser un avis Google',
+        id: 'google_maps',
+      }]
+    },
+    barcode: { type: 'QR_CODE', value: cardId, alternateText: cardId },
+  }
 
   const payload = {
     iss: credentials.client_email,
     aud: 'google',
     typ: 'savetowallet',
     iat: Math.floor(Date.now() / 1000),
-    payload: {
-      loyaltyObjects: [{ id: objectId(type, cardId) }],
-    },
+    payload: { loyaltyObjects: [loyaltyObject] },
   }
 
   const token = jwt.sign(payload, credentials.private_key, { algorithm: 'RS256' })

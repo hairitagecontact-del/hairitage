@@ -28,11 +28,7 @@ export async function POST(req: NextRequest) {
       let googleUrl: string | undefined
       if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
         try {
-          await ensureLoyaltyClass(type)
-          if (!existing.google_pass_id) {
-            await createGooglePassObject(type, existing.id, name, existing.stamps ?? 0)
-          }
-          googleUrl = generateGoogleWalletUrl(type, existing.id)
+          googleUrl = generateGoogleWalletUrl(type, existing.id, name, existing.stamps ?? 0)
         } catch (e) {
           console.error('Google pass error on existing card:', e)
         }
@@ -76,12 +72,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Generate Google pass — skip if not configured
+    // Generate Google pass JWT — no API call needed, object embedded in JWT
     if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
       try {
-        await ensureLoyaltyClass(type)
-        await createGooglePassObject(type, card.id, name, 0)
-        googleUrl = generateGoogleWalletUrl(type, card.id)
+        googleUrl = generateGoogleWalletUrl(type, card.id, name, 0)
       } catch (e) {
         console.error('Google pass error (skipped):', e)
       }
