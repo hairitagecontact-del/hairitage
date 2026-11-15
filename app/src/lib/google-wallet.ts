@@ -143,10 +143,27 @@ export async function updateGooglePassStamps(
   })
 }
 
-// Generates a "Save to Google Wallet" JWT link with full object embedded
+// Generates a "Save to Google Wallet" JWT link with class + object embedded
 export function generateGoogleWalletUrl(type: CardType, cardId: string, customerName?: string, stamps = 0): string {
   const credentials = getCredentials()
   const config = PASS_CONFIGS[type]
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://hairitage-eight.vercel.app'
+
+  const loyaltyClass = {
+    id: classId(type),
+    issuerName: "HAIR'ITAGE",
+    programName: config.subLabel,
+    programLogo: {
+      sourceUri: { uri: `${appUrl}/logo.png` },
+      contentDescription: { defaultValue: { language: 'fr-FR', value: "HAIR'ITAGE" } },
+    },
+    rewardsTier: config.label,
+    rewardsTierLabel: 'Carte',
+    loyaltyPointsLabel: 'Tampons',
+    hexBackgroundColor: '#1A1A14',
+    countryCode: 'MA',
+    reviewStatus: 'UNDER_REVIEW',
+  }
 
   const loyaltyObject = {
     id: objectId(type, cardId),
@@ -177,7 +194,10 @@ export function generateGoogleWalletUrl(type: CardType, cardId: string, customer
     aud: 'google',
     typ: 'savetowallet',
     iat: Math.floor(Date.now() / 1000),
-    payload: { loyaltyObjects: [loyaltyObject] },
+    payload: {
+      loyaltyClasses: [loyaltyClass],
+      loyaltyObjects: [loyaltyObject],
+    },
   }
 
   const token = jwt.sign(payload, credentials.private_key, { algorithm: 'RS256' })
