@@ -1,0 +1,279 @@
+<title>HAIR'ITAGE — QR Codes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Inter:wght@300;400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+  :root {
+    --bg: #FAFAF8;
+    --fg: #0F0F0D;
+    --gold: #C9A84C;
+    --gold-light: rgba(201,168,76,0.15);
+    --muted: #6B6B65;
+    --border: rgba(15,15,13,0.12);
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Inter', system-ui, sans-serif;
+    margin: 0;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 48px;
+  }
+
+  .page-header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+
+  .page-header h1 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 300;
+    font-size: clamp(28px, 5vw, 42px);
+    margin: 0 0 8px;
+    letter-spacing: 0.08em;
+    text-wrap: balance;
+  }
+
+  .page-header p {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0;
+  }
+
+  .ornament {
+    display: block;
+    width: 40px;
+    height: 1px;
+    background: var(--gold);
+    margin: 16px auto;
+  }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px 24px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    page-break-inside: avoid;
+  }
+
+  .card-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 500;
+  }
+
+  .card-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 400;
+    font-size: 22px;
+    margin: 0;
+    letter-spacing: 0.04em;
+  }
+
+  .qr-wrapper {
+    width: 180px;
+    height: 180px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    position: relative;
+  }
+
+  .qr-wrapper canvas,
+  .qr-wrapper img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  .qr-corner {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-color: var(--gold);
+    border-style: solid;
+  }
+  .qr-corner.tl { top: 6px; left: 6px; border-width: 2px 0 0 2px; border-radius: 3px 0 0 0; }
+  .qr-corner.tr { top: 6px; right: 6px; border-width: 2px 2px 0 0; border-radius: 0 3px 0 0; }
+  .qr-corner.bl { bottom: 6px; left: 6px; border-width: 0 0 2px 2px; border-radius: 0 0 0 3px; }
+  .qr-corner.br { bottom: 6px; right: 6px; border-width: 0 2px 2px 0; border-radius: 0 0 3px 0; }
+
+  .stamps-info {
+    background: var(--gold-light);
+    border-radius: 8px;
+    padding: 10px 16px;
+    width: 100%;
+  }
+
+  .stamps-info .stamps-count {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--gold);
+    display: block;
+  }
+
+  .stamps-info .stamps-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-top: 2px;
+  }
+
+  .gift-text {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .url-text {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+    word-break: break-all;
+  }
+
+  .footer {
+    text-align: center;
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .footer p {
+    font-size: 11px;
+    color: var(--muted);
+    margin: 0;
+    letter-spacing: 0.05em;
+  }
+
+  .double-h {
+    display: inline-block;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: -0.02em;
+  }
+</style>
+
+<div class="page-header">
+  <div class="eyebrow">Carte de fidélité digitale</div>
+  <h1>HAIR'ITAGE</h1>
+  <span class="ornament"></span>
+  <p>Scannez le QR code pour obtenir votre carte de fidélité</p>
+</div>
+
+<div class="cards-grid">
+  <div class="card">
+    <div class="card-label">Espace Hommes</div>
+    <h2 class="card-title">Barbershop</h2>
+    <div class="qr-wrapper" id="qr-homme">
+      <div class="qr-corner tl"></div>
+      <div class="qr-corner tr"></div>
+      <div class="qr-corner bl"></div>
+      <div class="qr-corner br"></div>
+    </div>
+    <div class="stamps-info">
+      <span class="stamps-count">5 tampons</span>
+      <span class="stamps-label">= 1 coupe offerte</span>
+    </div>
+    <div class="gift-text">Offrez-vous une coupe gratuite<br>après 5 visites</div>
+    <div class="url-text">hairitage-eight.vercel.app/join/homme</div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Salon Femmes</div>
+    <h2 class="card-title">Coiffure</h2>
+    <div class="qr-wrapper" id="qr-coiffure">
+      <div class="qr-corner tl"></div>
+      <div class="qr-corner tr"></div>
+      <div class="qr-corner bl"></div>
+      <div class="qr-corner br"></div>
+    </div>
+    <div class="stamps-info">
+      <span class="stamps-count">8 tampons</span>
+      <span class="stamps-label">= cadeau fidélité</span>
+    </div>
+    <div class="gift-text">Un soin offert<br>après 8 visites</div>
+    <div class="url-text">hairitage-eight.vercel.app/join/coiffure</div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Institut Beauté</div>
+    <h2 class="card-title">Esthétique</h2>
+    <div class="qr-wrapper" id="qr-esthetique">
+      <div class="qr-corner tl"></div>
+      <div class="qr-corner tr"></div>
+      <div class="qr-corner bl"></div>
+      <div class="qr-corner br"></div>
+    </div>
+    <div class="stamps-info">
+      <span class="stamps-count">8 tampons</span>
+      <span class="stamps-label">= cadeau fidélité</span>
+    </div>
+    <div class="gift-text">Un soin offert<br>après 8 visites</div>
+    <div class="url-text">hairitage-eight.vercel.app/join/esthetique</div>
+  </div>
+</div>
+
+<div class="footer">
+  <p><span class="double-h">HH</span> &nbsp;·&nbsp; HAIR'ITAGE &nbsp;·&nbsp; Fidélité sans application</p>
+</div>
+
+<script>
+  const cards = [
+    { id: 'qr-homme',      url: 'https://hairitage-eight.vercel.app/join/homme' },
+    { id: 'qr-coiffure',   url: 'https://hairitage-eight.vercel.app/join/coiffure' },
+    { id: 'qr-esthetique', url: 'https://hairitage-eight.vercel.app/join/esthetique' },
+  ]
+
+  cards.forEach(({ id, url }) => {
+    const wrapper = document.getElementById(id)
+    const inner = document.createElement('div')
+    inner.style.cssText = 'position:relative;z-index:1;'
+    wrapper.insertBefore(inner, wrapper.firstChild)
+    new QRCode(inner, {
+      text: url,
+      width: 148,
+      height: 148,
+      colorDark: '#0F0F0D',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    })
+  })
+</script>

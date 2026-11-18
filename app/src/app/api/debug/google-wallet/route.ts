@@ -39,6 +39,10 @@ export async function GET(req: NextRequest) {
               id: classId,
               issuerName: "HAIR'ITAGE",
               programName: 'Debug Test',
+              programLogo: {
+                sourceUri: { uri: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://hairitage-eight.vercel.app'}/logo.png` },
+                contentDescription: { defaultValue: { language: 'fr-FR', value: "HAIR'ITAGE" } },
+              },
               loyaltyPointsLabel: 'Tampons',
               hexBackgroundColor: '#1A1A14',
               countryCode: 'MA',
