@@ -153,6 +153,10 @@ export function generateGoogleWalletUrl(type: CardType, cardId: string, customer
     id: classId(type),
     issuerName: "HAIR'ITAGE",
     programName: config.subLabel,
+    programLogo: {
+      sourceUri: { uri: `${appUrl}/logo.png` },
+      contentDescription: { defaultValue: { language: 'fr-FR', value: "HAIR'ITAGE" } },
+    },
     loyaltyPointsLabel: 'Tampons',
     hexBackgroundColor: '#1A1A14',
     countryCode: 'MA',
