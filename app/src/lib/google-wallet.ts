@@ -51,7 +51,7 @@ export async function ensureLoyaltyClass(type: CardType): Promise<void> {
     },
     hexBackgroundColor: '#1A1A14',
     countryCode: 'MA',
-    reviewStatus: 'ACTIVE',
+    reviewStatus: 'DRAFT',
   }
 
   await (client as any).request({
@@ -156,7 +156,7 @@ export function generateGoogleWalletUrl(type: CardType, cardId: string, customer
     loyaltyPointsLabel: 'Tampons',
     hexBackgroundColor: '#1A1A14',
     countryCode: 'MA',
-    reviewStatus: 'ACTIVE',
+    reviewStatus: 'DRAFT',
   }
 
   const loyaltyObject = {

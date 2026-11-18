@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
               loyaltyPointsLabel: 'Tampons',
               hexBackgroundColor: '#1A1A14',
               countryCode: 'MA',
-              reviewStatus: 'ACTIVE',
+              reviewStatus: 'DRAFT',
             },
           })
           classResult = { created: true, status: createRes.status }
