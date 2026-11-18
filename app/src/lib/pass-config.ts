@@ -40,3 +40,9 @@ export function getStampLabel(stamps: number, total: number): string {
   if (stamps >= total) return '🎁 Cadeau disponible !'
   return `${stamps} / ${total} tampons`
 }
+
+export function getStampVisual(stamps: number, total: number): string {
+  const filled = '●'
+  const empty = '○'
+  return Array.from({ length: total }, (_, i) => i < stamps ? filled : empty).join(' ')
+}

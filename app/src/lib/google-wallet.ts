@@ -1,7 +1,7 @@
 import { GoogleAuth } from 'google-auth-library'
 import jwt from 'jsonwebtoken'
 import type { CardType } from '@/types'
-import { PASS_CONFIGS, getStampLabel } from './pass-config'
+import { PASS_CONFIGS, getStampLabel, getStampVisual } from './pass-config'
 
 function getCredentials() {
   const json = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
@@ -174,8 +174,8 @@ export function generateGoogleWalletUrl(type: CardType, cardId: string, customer
       balance: { int: stamps },
     },
     textModulesData: [
-      { header: 'CADEAU', body: `${config.totalStamps} tampons = ${config.gift}`, id: 'gift_info' },
-      { header: 'PROGRESSION', body: getStampLabel(stamps, config.totalStamps), id: 'progress' },
+      { header: 'PROGRESSION', body: getStampVisual(stamps, config.totalStamps), id: 'progress' },
+      { header: `${stamps}/${config.totalStamps} tampons`, body: stamps >= config.totalStamps ? '🎁 Cadeau disponible !' : `Encore ${config.totalStamps - stamps} tampon${config.totalStamps - stamps > 1 ? 's' : ''} pour ${config.gift}`, id: 'gift_info' },
     ],
     barcode: { type: 'QR_CODE', value: cardId, alternateText: cardId },
   }
