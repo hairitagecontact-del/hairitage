@@ -153,12 +153,6 @@ export function generateGoogleWalletUrl(type: CardType, cardId: string, customer
     id: classId(type),
     issuerName: "HAIR'ITAGE",
     programName: config.subLabel,
-    programLogo: {
-      sourceUri: { uri: `${appUrl}/logo.png` },
-      contentDescription: { defaultValue: { language: 'fr-FR', value: "HAIR'ITAGE" } },
-    },
-    rewardsTier: config.label,
-    rewardsTierLabel: 'Carte',
     loyaltyPointsLabel: 'Tampons',
     hexBackgroundColor: '#1A1A14',
     countryCode: 'MA',
@@ -179,13 +173,6 @@ export function generateGoogleWalletUrl(type: CardType, cardId: string, customer
       { header: 'CADEAU', body: `${config.totalStamps} tampons = ${config.gift}`, id: 'gift_info' },
       { header: 'PROGRESSION', body: getStampLabel(stamps, config.totalStamps), id: 'progress' },
     ],
-    linksModuleData: {
-      uris: [{
-        uri: process.env.GOOGLE_MAPS_URL ?? 'https://maps.google.com',
-        description: 'Laisser un avis Google',
-        id: 'google_maps',
-      }]
-    },
     barcode: { type: 'QR_CODE', value: cardId, alternateText: cardId },
   }
 
