@@ -25,7 +25,7 @@ async function getAuthClient() {
 }
 
 function classId(type: CardType) {
-  return `${getIssuerId()}.hairitage_${type}`
+  return `${getIssuerId()}.hairitage_${type}_v2`
 }
 
 function objectId(type: CardType, cardId: string) {
